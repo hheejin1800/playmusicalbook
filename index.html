@@ -28,9 +28,13 @@ input[type=range]{width:100%;accent-color:var(--ac)}
 .tag{display:inline-block;background:var(--ac2);border-radius:99px;padding:1px 8px;font-size:11px;margin-left:4px}
 .code{font-family:ui-monospace,monospace;letter-spacing:2px;font-weight:700}
 .hidden{display:none}
+#toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);width:min(90vw,420px);background:var(--ac);color:#fff;padding:16px 18px;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.28);text-align:center;font-weight:600;line-height:1.5;opacity:0;pointer-events:none;transition:.35s;z-index:99}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#toast small{display:block;font-weight:400;opacity:.85;margin-top:2px}
 </style>
 </head>
 <body>
+<div id="toast"></div>
 <main id="app"><p class="sub">불러오는 중…</p></main>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -144,10 +148,28 @@ function roomView(){
   unsubs.push(onSnapshot(collection(db,`rooms/${code}/members`),s=>{members=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{}));
 }
 
+const MSGS=[
+  "🎉 완독 축하해요! 이제 공연을 두 배로 즐길 수 있겠어요.",
+  "📖 마지막 장까지 해냈어요! 객석에서 이야기가 더 깊게 보일 거예요.",
+  "👏 원작을 다 읽었어요! 무대 위 장면이 머릿속 장면과 만나는 순간을 기대해요.",
+  "✨ 완독 성공! 이제 공연에서 숨은 디테일을 찾아보세요.",
+  "🎭 책 한 권을 끝냈어요! 커튼콜의 박수가 더 크게 나올 것 같아요."
+];
+let toastT=null;
+function celebrate(title){
+  const t=$('#toast');
+  t.innerHTML=MSGS[Math.floor(Math.random()*MSGS.length)]+'<small>'+esc(title)+'</small>';
+  t.classList.add('show');clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),5000);
+}
+document.addEventListener('click',e=>{if(e.target.closest('#toast'))$('#toast').classList.remove('show')});
 async function save(bid,v){
   const m=members.find(x=>x.id===uid);if(!m)return;
-  try{await setDoc(D(`rooms/${code}/members/${uid}`),{name:m.name,progress:{...(m.progress||{}),[bid]:v}})}
-  catch(e){alert('저장하지 못했어요: '+(e.message||e.code))}
+  const prev=+((m.progress||{})[bid]||0);
+  try{
+    await setDoc(D(`rooms/${code}/members/${uid}`),{name:m.name,progress:{...(m.progress||{}),[bid]:v}});
+    if(v===100&&prev<100){const bk=(room.books||[]).find(y=>y.id===bid);celebrate(bk?bk.title:'')}
+  }catch(e){alert('저장하지 못했어요: '+(e.message||e.code))}
 }
 
 function render(){

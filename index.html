@@ -130,6 +130,15 @@ function roomView(){
   $('#books').addEventListener('click',e=>{
     const b=e.target.closest('button[data-b]');if(b)save(b.dataset.b,+b.dataset.v);
   });
+  $('#books').addEventListener('click',async e=>{
+    const x=e.target.closest('button[data-e]');if(!x||!room)return;
+    const bk=(room.books||[]).find(y=>y.id===x.dataset.e);if(!bk)return;
+    const t=prompt('책 제목',bk.title);if(t===null)return;
+    if(!t.trim()){alert('책 제목은 비워둘 수 없어요.');return}
+    const a=prompt('저자 (없으면 비워두세요)',bk.author||'');if(a===null)return;
+    const books=room.books.map(y=>y.id===bk.id?{...y,title:t.trim(),author:a.trim()}:y);
+    try{await updateDoc(D('rooms/'+code),{books})}catch(err){alert('수정하지 못했어요: '+(err.message||err.code))}
+  });
   const fail=()=>{roomMissing=true;render()};
   unsubs.push(onSnapshot(D('rooms/'+code),s=>{if(!s.exists()){roomMissing=true}else{roomMissing=false;room=s.data()}render()},fail));
   unsubs.push(onSnapshot(collection(db,`rooms/${code}/members`),s=>{members=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{}));
@@ -181,7 +190,7 @@ function render(){
       const p=+((m.progress||{})[b.id]||0);
       return `<div class="mem"><span>${esc(m.name)}${m.id===uid?'<b class="tag">나</b>':''}</span><div class="bar"><i style="width:${p}%"></i></div><span>${p}%</span></div>`}).join('');
     return `<div class="card">
-      <h2>${esc(b.title)}</h2><div class="sub">${esc(b.author||'')}</div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2>${esc(b.title)}</h2><div class="sub">${esc(b.author||'')}</div></div><button class="ghost sm" data-e="${b.id}">✏️ 수정</button></div>
       <div class="row" style="margin:10px 0 4px;justify-content:space-between"><span class="sub">방 전체 평균</span><span class="big">${avg}%</span></div>
       <div class="bar"><i style="width:${avg}%"></i></div>
       ${me?`<div class="mine" style="margin-top:14px"><div class="row" style="justify-content:space-between"><span>내 진도</span><b class="pv">${mine}%</b></div>
